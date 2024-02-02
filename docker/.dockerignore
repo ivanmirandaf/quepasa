@@ -12,3 +12,4 @@ tmp
 node_modules
 .n8n
 data
+.local.yml

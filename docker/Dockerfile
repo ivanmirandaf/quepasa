@@ -15,7 +15,7 @@ FROM golang:latest as src
 
 WORKDIR /opt/quepasa/
 
-COPY --from=builder /build/. /builder/
+COPY --from=builder /build/. /opt/quepasa/
 COPY --from=builder /build/docker-entrypoint.sh /
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
