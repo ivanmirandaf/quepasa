@@ -52,11 +52,17 @@ type WhatsappMessage struct {
 
 //region ORDER BY TIMESTAMP
 
-type ByTimestamp []WhatsappMessage
+// Ordering by (Timestamp) and then (Id)
+type WhatsappOrderedMessages []WhatsappMessage
 
-func (m ByTimestamp) Len() int           { return len(m) }
-func (m ByTimestamp) Less(i, j int) bool { return m[i].Timestamp.After(m[j].Timestamp) }
-func (m ByTimestamp) Swap(i, j int)      { m[i], m[j] = m[j], m[i] }
+func (m WhatsappOrderedMessages) Len() int { return len(m) }
+func (m WhatsappOrderedMessages) Less(i, j int) bool {
+	if m[i].Timestamp == m[j].Timestamp {
+		return m[i].Id < m[j].Id
+	}
+	return m[i].Timestamp.After(m[j].Timestamp)
+}
+func (m WhatsappOrderedMessages) Swap(i, j int) { m[i], m[j] = m[j], m[i] }
 
 //endregion
 
@@ -102,7 +108,19 @@ func (source *WhatsappMessage) FromGroup() bool {
 }
 
 func (source *WhatsappMessage) FromBroadcast() bool {
-	return source.Chat.Id == "status" || source.Chat.Id == "status@broadcast"
+	if source.Chat.Id == "status" {
+		return true
+	}
+
+	if source.Chat.Id == "status@broadcast" {
+		return true
+	}
+
+	if strings.HasSuffix(source.Chat.Id, "@newsletter") {
+		return true
+	}
+
+	return false
 }
 
 func (source *WhatsappMessage) GetAttachment() *WhatsappAttachment {
