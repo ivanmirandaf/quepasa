@@ -13,7 +13,7 @@ type WhatsappMessage struct {
 	Content interface{} `json:"-"`
 	Info    interface{} `json:"-"`
 
-	Id      string `json:"id"`
+	Id      string `json:"id"`                // Upper text msg id
 	TrackId string `json:"trackid,omitempty"` // Optional id of the system that send that message
 
 	Timestamp time.Time           `json:"timestamp"`
@@ -60,7 +60,7 @@ func (m WhatsappOrderedMessages) Less(i, j int) bool {
 	if m[i].Timestamp == m[j].Timestamp {
 		return m[i].Id < m[j].Id
 	}
-	return m[i].Timestamp.After(m[j].Timestamp)
+	return m[i].Timestamp.Before(m[j].Timestamp)
 }
 func (m WhatsappOrderedMessages) Swap(i, j int) { m[i], m[j] = m[j], m[i] }
 

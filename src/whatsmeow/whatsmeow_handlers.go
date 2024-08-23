@@ -149,6 +149,12 @@ func (source *WhatsmeowHandlers) Register() (err error) {
 	return
 }
 
+func (source *WhatsmeowHandlers) SendPresence(presence types.Presence, from string) {
+	logentry := source.GetLogger()
+	client := source.Client
+	SendPresence(client, presence, from, logentry)
+}
+
 var historySyncID int32
 var startupTime = time.Now().Unix()
 
@@ -193,7 +199,7 @@ func (source *WhatsmeowHandlers) EventsHandler(rawEvt interface{}) {
 			// importante para zerar o tempo entre tentativas em caso de erro
 			source.Client.AutoReconnectErrors = 0
 
-			PushNameSetting(source.Client, logger)
+			source.SendPresence(WhatsmeowPresence, "'connected' event")
 		}
 
 		if source.WAHandlers != nil && !source.WAHandlers.IsInterfaceNil() {
@@ -202,7 +208,7 @@ func (source *WhatsmeowHandlers) EventsHandler(rawEvt interface{}) {
 		return
 
 	case *events.PushNameSetting:
-		PushNameSetting(source.Client, logger)
+		source.SendPresence(WhatsmeowPresence, "'push name setting' event")
 		return
 
 	case *events.Disconnected:
@@ -229,14 +235,10 @@ func (source *WhatsmeowHandlers) EventsHandler(rawEvt interface{}) {
 		return
 
 	case *events.AppStateSyncComplete:
-		if len(source.Client.Store.PushName) > 0 && evt.Name == appstate.WAPatchCriticalBlock {
-			err := source.Client.SendPresence(types.PresenceAvailable)
-			if err != nil {
-				logger.Warnf("failed to send available presence: %v", err)
-			} else {
-				logger.Debug("marked self as available from app state sync")
-			}
+		if evt.Name == appstate.WAPatchCriticalBlock {
+			source.SendPresence(WhatsmeowPresence, "'app state sync complete' event")
 		}
+		return
 
 	case
 		*events.AppState,
@@ -259,20 +261,6 @@ func (source *WhatsmeowHandlers) EventsHandler(rawEvt interface{}) {
 	default:
 		logger.Debugf("event not handled: %v", reflect.TypeOf(evt))
 		return
-	}
-}
-
-func PushNameSetting(cli *whatsmeow.Client, logger *log.Entry) {
-	if len(cli.Store.PushName) == 0 {
-		return
-	}
-	// Send presence available when connecting and when the pushname is changed.
-	// This makes sure that outgoing messages always have the right pushname.
-	err := cli.SendPresence(types.PresenceAvailable)
-	if err != nil {
-		logger.Warnf("failed to send available presence: %v", err)
-	} else {
-		logger.Debug("marked self as available")
 	}
 }
 
@@ -300,6 +288,12 @@ func (source *WhatsmeowHandlers) OnHistorySyncEvent(evt events.HistorySync) {
 	logentry.Infof("history sync: %s", evt.Data.SyncType)
 	// HistorySyncSaveJSON(evt)
 
+	// whatsmeow service options
+	options := source.GetServiceOptions()
+	if options.HistorySync == nil {
+		return
+	}
+
 	conversations := evt.Data.GetConversations()
 	for _, conversation := range conversations {
 		for _, historyMsg := range conversation.GetMessages() {
@@ -309,12 +303,20 @@ func (source *WhatsmeowHandlers) OnHistorySyncEvent(evt events.HistorySync) {
 				return
 			}
 
-			msgevt, err := source.Client.ParseWebMessage(wid, historyMsg.GetMessage())
+			// converting to event
+			msgInfo := historyMsg.GetMessage()
+			msgTime := msgInfo.GetMessageTimestamp()
+			if !options.HandleHistory(msgTime) {
+				continue
+			}
+
+			msgevt, err := source.Client.ParseWebMessage(wid, msgInfo)
 			if err != nil {
 				logentry.Errorf("failed to parse web message at history sync: %v", err)
 				return
 			}
 
+			// put here a logic for history sync days filter
 			source.Message(*msgevt)
 		}
 	}
@@ -521,6 +523,18 @@ func (source *WhatsmeowHandlers) RejectCall(v types.BasicCallMeta) error {
 func (handler *WhatsmeowHandlers) Receipt(evt events.Receipt) {
 	handler.GetLogger().Trace("event Receipt !")
 
+	chatID := fmt.Sprint(evt.Chat.User, "@", evt.Chat.Server)
+
+	// Ignore chats with @g.us, @broadcast and @newsletter
+	if strings.Contains(chatID, "@g.us") || strings.Contains(chatID, "@broadcast") || strings.Contains(chatID, "@newsletter") {
+		return
+	}
+
+	// Check if the event is of type "read" (when the contact read)
+	if evt.Type != "read" {
+		return
+	}
+
 	message := &whatsapp.WhatsappMessage{Content: evt}
 	message.Id = "readreceipt"
 
@@ -529,7 +543,6 @@ func (handler *WhatsmeowHandlers) Receipt(evt events.Receipt) {
 	message.FromMe = false
 
 	message.Chat = whatsapp.WhatsappChat{}
-	chatID := fmt.Sprint(evt.Chat.User, "@", evt.Chat.Server)
 	message.Chat.Id = chatID
 
 	message.Type = whatsapp.SystemMessageType
@@ -538,7 +551,6 @@ func (handler *WhatsmeowHandlers) Receipt(evt events.Receipt) {
 	message.Text = strings.Join(evt.MessageIDs, ",")
 
 	if handler.WAHandlers != nil {
-
 		// following to internal handlers
 		go handler.WAHandlers.Receipt(message)
 	}

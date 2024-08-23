@@ -29,14 +29,12 @@ func FormReceiveController(w http.ResponseWriter, r *http.Request) {
 			data.ErrorMessage = fmt.Sprintf("server (%s) not ready yet ! current status: %s; %s", server.Wid, status.String(), data.ErrorMessage)
 		}
 
-		queryValues := r.URL.Query()
-		paramTimestamp := queryValues.Get("timestamp")
-		timestamp, err := GetTimestamp(paramTimestamp)
+		timestamp, err := GetTimestamp(r)
 		if err != nil {
 			data.ErrorMessage = fmt.Sprintf("%s; %s", err.Error(), data.ErrorMessage)
 		}
 
-		messages := GetMessages(server, timestamp)
+		messages := GetOrderedMessages(server, timestamp)
 		data.Messages = messages
 	}
 

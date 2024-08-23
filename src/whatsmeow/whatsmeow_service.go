@@ -8,12 +8,12 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 	log "github.com/sirupsen/logrus"
-	waProto "go.mau.fi/whatsmeow/binary/proto"
 	"google.golang.org/protobuf/proto"
 
 	library "github.com/nocodeleaks/quepasa/library"
 	whatsapp "github.com/nocodeleaks/quepasa/whatsapp"
 	whatsmeow "go.mau.fi/whatsmeow"
+	"go.mau.fi/whatsmeow/proto/waCompanionReg"
 	"go.mau.fi/whatsmeow/store"
 	"go.mau.fi/whatsmeow/store/sqlstore"
 	waLog "go.mau.fi/whatsmeow/util/log"
@@ -87,22 +87,27 @@ func Start(options WhatsmeowOptions) {
 	version[2] = 0
 	store.SetOSInfo(showing, version)
 
+	// this section is broken, history sync configurations, do nothing ......
+	// --------------------------------
+
 	historysync := WhatsmeowService.GetHistorySync()
 	if historysync != nil {
-		logentry.Infof("Setting history sync to %v days", *historysync)
-		store.DeviceProps.RequireFullSync = proto.Bool(true)
+		HistorySyncValue := *historysync
+		logentry.Infof("setting history sync to %v days", HistorySyncValue)
 
-		if *historysync == 0 {
-			store.DeviceProps.HistorySyncConfig = &waProto.DeviceProps_HistorySyncConfig{
-				FullSyncDaysLimit: proto.Uint32(3650),
+		if HistorySyncValue == 0 {
+			store.DeviceProps.RequireFullSync = proto.Bool(true)
+			store.DeviceProps.HistorySyncConfig = &waCompanionReg.DeviceProps_HistorySyncConfig{
+				FullSyncDaysLimit:   proto.Uint32(3650),
+				FullSyncSizeMbLimit: proto.Uint32(102400),
 			}
 		} else {
-			store.DeviceProps.HistorySyncConfig = &waProto.DeviceProps_HistorySyncConfig{
-				FullSyncDaysLimit: historysync,
+			store.DeviceProps.RequireFullSync = proto.Bool(false)
+			store.DeviceProps.HistorySyncConfig = &waCompanionReg.DeviceProps_HistorySyncConfig{
+				RecentSyncDaysLimit: proto.Uint32(HistorySyncValue * 10),
 			}
 		}
 
-		store.DeviceProps.HistorySyncConfig.FullSyncSizeMbLimit = proto.Uint32(102400)
 		store.DeviceProps.HistorySyncConfig.StorageQuotaMb = proto.Uint32(102400)
 	}
 }

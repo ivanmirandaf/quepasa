@@ -17,12 +17,13 @@ const APIVersion3 string = "v3"
 var ControllerPrefixV3 string = fmt.Sprintf("/%s/bot/{token}", APIVersion3)
 
 func RegisterAPIV3Controllers(r chi.Router) {
+
 	r.Get(ControllerPrefixV3, InformationControllerV3)
 
 	// SENDING MSG ----------------------------
 	// ----------------------------------------
 
-	// used to dispatch alert msgs via url, triggers on monitor systems like zabbix
+	// used to send alert msgs via url, triggers on monitor systems like zabbix
 	r.Get(ControllerPrefixV3+"/send", SendAny)
 
 	r.Post(ControllerPrefixV3+"/send", SendAny)
@@ -35,12 +36,12 @@ func RegisterAPIV3Controllers(r chi.Router) {
 	// deprecated, discard/remove on next version
 	r.Post(ControllerPrefixV3+"/senddocument", SendDocumentAPIHandlerV2)
 
-	r.Post(ControllerPrefixV3+"/sendurl", SendAnyFromUrl)
+	r.Post(ControllerPrefixV3+"/sendurl", SendAny)
 	r.Post(ControllerPrefixV3+"/sendbinary/{chatid}/{filename}/{text}", SendDocumentFromBinary)
 	r.Post(ControllerPrefixV3+"/sendbinary/{chatid}/{filename}", SendDocumentFromBinary)
 	r.Post(ControllerPrefixV3+"/sendbinary/{chatid}", SendDocumentFromBinary)
 	r.Post(ControllerPrefixV3+"/sendbinary", SendDocumentFromBinary)
-	r.Post(ControllerPrefixV3+"/sendencoded", SendDocumentFromEncoded)
+	r.Post(ControllerPrefixV3+"/sendencoded", SendAny)
 
 	// ----------------------------------------
 	// SENDING MSG ----------------------------

@@ -10,7 +10,25 @@ import (
 	whatsapp "github.com/nocodeleaks/quepasa/whatsapp"
 )
 
-func GetTimestamp(timestamp string) (result int64, err error) {
+func GetTimestamp(r *http.Request) (result int64, err error) {
+	paramTimestamp := models.GetRequestParameter(r, "timestamp")
+	if len(paramTimestamp) == 0 {
+		paramLast := models.GetRequestParameter(r, "last")
+		if len(paramLast) > 0 {
+			last, err := strconv.ParseInt(paramLast, 10, 64)
+			if err == nil {
+				request := time.Now().UTC().Add(time.Duration(-last) * time.Minute)
+				return request.Unix(), nil
+			}
+		}
+	}
+
+	result, err = StringToTimestamp(paramTimestamp)
+	return
+
+}
+
+func StringToTimestamp(timestamp string) (result int64, err error) {
 	if len(timestamp) > 0 {
 		result, err = strconv.ParseInt(timestamp, 10, 64)
 		if err != nil {
@@ -24,12 +42,18 @@ func GetTimestamp(timestamp string) (result int64, err error) {
 	return
 }
 
-// Retrieve messages with timestamp parameter
-// Sorting then
-func GetMessages(server *models.QpWhatsappServer, timestamp int64) (messages []whatsapp.WhatsappMessage) {
+/*
+<summary>
+
+	Retrieve messages with timestamp parameter
+	Sorting then, by timestamp and id, desc
+
+</summary>
+*/
+func GetOrderedMessages(server *models.QpWhatsappServer, timestamp int64) (messages []whatsapp.WhatsappMessage) {
 	searchTime := time.Unix(timestamp, 0)
 	messages = server.GetMessages(searchTime)
-	sort.Sort(whatsapp.WhatsappOrderedMessages(messages))
+	sort.Sort(sort.Reverse(whatsapp.WhatsappOrderedMessages(messages)))
 	return
 }
 

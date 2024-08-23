@@ -14,6 +14,7 @@ import (
 const CurrentAPIVersion string = "v4"
 
 func RegisterAPIControllers(r chi.Router) {
+
 	aliases := []string{"/current", "", "/" + CurrentAPIVersion}
 	for _, endpoint := range aliases {
 
@@ -38,7 +39,7 @@ func RegisterAPIControllers(r chi.Router) {
 		r.Delete(endpoint+"/message/{messageid}", RevokeController)
 		r.Delete(endpoint+"/message", RevokeController)
 
-		// used to dispatch alert msgs via url, triggers on monitor systems like zabbix
+		// used to send alert msgs via url, triggers on monitor systems like zabbix
 		r.Get(endpoint+"/send", SendAny)
 
 		r.Post(endpoint+"/send", SendAny)
@@ -51,12 +52,12 @@ func RegisterAPIControllers(r chi.Router) {
 		// deprecated, discard/remove on next version
 		r.Post(endpoint+"/senddocument", SendDocumentAPIHandlerV2)
 
-		r.Post(endpoint+"/sendurl", SendAnyFromUrl)
+		r.Post(endpoint+"/sendurl", SendAny)
 		r.Post(endpoint+"/sendbinary/{chatid}/{filename}/{text}", SendDocumentFromBinary)
 		r.Post(endpoint+"/sendbinary/{chatid}/{filename}", SendDocumentFromBinary)
 		r.Post(endpoint+"/sendbinary/{chatid}", SendDocumentFromBinary)
 		r.Post(endpoint+"/sendbinary", SendDocumentFromBinary)
-		r.Post(endpoint+"/sendencoded", SendDocumentFromEncoded)
+		r.Post(endpoint+"/sendencoded", SendAny)
 
 		// ----------------------------------------
 		// SENDING MSG ----------------------------
